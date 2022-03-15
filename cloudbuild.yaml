@@ -2,7 +2,7 @@ steps:
   # Build the Strategy Runner container image; using a cached image if available
   - name: 'gcr.io/kaniko-project/executor:v1.6.0'
     args: [
-      '--dockerfile=build/Dockerfile',
+      '--dockerfile=Dockerfile',
       '--destination=gcr.io/$PROJECT_ID/github.com/csgriffis/vol-barometer',
       '--cache=true',
       '--build-arg',
