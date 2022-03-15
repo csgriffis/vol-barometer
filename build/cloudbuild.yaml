@@ -1,0 +1,31 @@
+steps:
+  # Build the Strategy Runner container image; using a cached image if available
+  - name: 'gcr.io/kaniko-project/executor:v1.6.0'
+    args: [
+      '--dockerfile=build/Dockerfile',
+      '--destination=gcr.io/$PROJECT_ID/github.com/csgriffis/vol-barometer',
+      '--cache=true',
+      '--build-arg',
+      'BUILD_TAG=$SHORT_SHA',
+    ]
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args: [
+      'run',
+      'deploy',
+      'vol-barometer',
+      '--image',
+      'gcr.io/$PROJECT_ID/github.com/csgriffis/vol-barometer',
+      '--region',
+      'us-east4',
+      '--platform',
+      'managed',
+      '--revision-suffix',
+      '$SHORT_SHA',
+      '--cpu',
+      '1',
+      '--memory',
+      '512Mi',
+      '--no-allow-unauthenticated', # no outside requests
+    ]
