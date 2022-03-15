@@ -20,7 +20,7 @@ def healthcheck():
     return '', 204
 
 
-@app.route('/rebalance')
+@app.route('/rebalance', methods=['POST'])
 def main():
     # define strategies
     leveraged_defensive_rotation = Strategy({
