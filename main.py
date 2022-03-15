@@ -15,6 +15,12 @@ logging.basicConfig(format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)
 
 
 @app.route('/')
+def healthcheck():
+    # health check endpoint for startup
+    return '', 204
+
+
+@app.route('/rebalance')
 def main():
     # define strategies
     leveraged_defensive_rotation = Strategy({
