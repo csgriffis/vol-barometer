@@ -1,4 +1,3 @@
-import logging
 import os
 
 from flask import Flask
@@ -9,9 +8,6 @@ from portfolio import Portfolio
 from strategy import Strategy
 
 app = Flask(__name__)
-
-# todo: move to new package?
-logging.basicConfig(format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s: %(message)s', level=logging.DEBUG)
 
 
 @app.route('/')

@@ -1,10 +1,10 @@
-import logging
 from typing import List, Tuple
 
 import alpaca_trade_api as tradeapi
 
 from barometer import VolatilityLevels
 from config import Config
+from logger import logger
 from strategy import Strategy, vol_level_literal
 
 
@@ -29,6 +29,8 @@ class Portfolio:
         # get volatility level literal
         vol_level = self._get_vol_level(barometer)
 
+        logger.info('volatility values', barometer=barometer, volatility_level=vol_level)
+
         # get target allocation
         target = self._get_target_allocation(vol_level)
         target_positions = [t[0] for t in target]
@@ -39,23 +41,23 @@ class Portfolio:
         # remove existing positions that do not exist in the target allocation
         for position in positions:
             if target_positions.count(position.symbol) == 0:
-                logging.info(f'closing position: {position.symbol}')
+                logger.info('closing position', symbol=position.symbol)
                 # position not in target allocation; close
                 self.alpaca.close_position(position.symbol)
             else:
                 # position exists for target; do not adjust
-                logging.info(f'target position exists: {position.symbol}')
+                logger.info('target position exists', symbol=position.symbol)
                 self.blocklist.add(position.symbol)
 
         # get account equity
         equity = int(float(self.alpaca.get_account().equity))
 
         for [ticker, weight] in target:
-            logging.debug(f'target ticker: {ticker}\ttarget weight: {weight}')
+            logger.debug('iterating target', ticker=ticker, weight=weight)
             # create order if ticker is not in blocklist
             if self.blocklist.isdisjoint({ticker}):
                 if ticker != '':
-                    logging.info(f'submitting order: {ticker}')
+                    logger.info('submitting order', ticker=ticker)
                     # set notional ($ amount) instead of trying to calculate a quantity
                     self.alpaca.submit_order(symbol=ticker, order_class='simple', notional=(equity * weight))
 
@@ -85,5 +87,5 @@ class Portfolio:
         """
         orders = self.alpaca.list_orders(status="open")
         for order in orders:
-            logging.info(f'canceling order: {order.id}')
+            logger.info('canceling order', order_id=order.id)
             self.alpaca.cancel_order(order.id)
