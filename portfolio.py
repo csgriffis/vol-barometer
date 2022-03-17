@@ -59,7 +59,7 @@ class Portfolio:
                 if ticker != '':
                     logger.info('submitting order', ticker=ticker)
                     # set notional ($ amount) instead of trying to calculate a quantity
-                    # self.alpaca.submit_order(symbol=ticker, order_class='simple', notional=(equity * weight))
+                    self.alpaca.submit_order(symbol=ticker, order_class='simple', notional=(equity * weight))
 
     def _get_target_allocation(self, vol_level: vol_level_literal) -> List[Tuple[str, float]]:
         """
