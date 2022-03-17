@@ -1,8 +1,6 @@
 from typing import List, Tuple
 
 import alpaca_trade_api as tradeapi
-import pandas as pd
-from alpaca_trade_api import TimeFrame
 
 from barometer import VolatilityLevels
 from config import Config
@@ -101,8 +99,5 @@ class Portfolio:
             self.alpaca.cancel_order(order.id)
 
     def _get_latest_price(self, ticker: str) -> float:
-        bars = self.alpaca.get_bars(ticker, TimeFrame.Minute,
-                                    pd.Timestamp('now').date().__str__(),
-                                    pd.Timestamp('now').date().__str__(), limit=1,
-                                    adjustment='raw')
-        return bars[0].c
+        quote = self.alpaca.get_latest_quote(ticker)
+        return quote.ask_price
