@@ -1,6 +1,8 @@
 from typing import List, Tuple
 
 import alpaca_trade_api as tradeapi
+import pandas as pd
+from alpaca_trade_api import TimeFrame
 
 from barometer import VolatilityLevels
 from config import Config
@@ -58,8 +60,16 @@ class Portfolio:
             if self.blocklist.isdisjoint({ticker}):
                 if ticker != '':
                     logger.info('submitting order', ticker=ticker)
-                    # set notional ($ amount) instead of trying to calculate a quantity
-                    self.alpaca.submit_order(symbol=ticker, order_class='simple', notional=(equity * weight))
+                    # get asset
+                    asset = self.alpaca.get_asset(ticker)
+                    if asset.fractionable:
+                        # set notional ($ amount) instead of trying to calculate a quantity
+                        self.alpaca.submit_order(symbol=ticker, order_class='simple', notional=(equity * weight))
+                    else:
+                        # calculate non-fractional quantity
+                        price = self._get_latest_price(ticker)
+                        qty = (equity * weight) / price
+                        self.alpaca.submit_order(symbol=ticker, order_class='simple', qty=int(qty))
 
     def _get_target_allocation(self, vol_level: vol_level_literal) -> List[Tuple[str, float]]:
         """
@@ -89,3 +99,10 @@ class Portfolio:
         for order in orders:
             logger.info('canceling order', order_id=order.id)
             self.alpaca.cancel_order(order.id)
+
+    def _get_latest_price(self, ticker: str) -> float:
+        bars = self.alpaca.get_bars(ticker, TimeFrame.Minute,
+                                    pd.Timestamp('now').date().__str__(),
+                                    pd.Timestamp('now').date().__str__(), limit=1,
+                                    adjustment='raw')
+        return bars[0].c
