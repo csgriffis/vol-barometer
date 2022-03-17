@@ -73,11 +73,11 @@ def main():
             vol_trend
         ],
         vol_levels={
-            'minimum': 20,
-            'moderate': 40,
-            'average': 60,
-            'elevated': 80,
-            'extreme': 100
+            'minimum': .2,
+            'moderate': .4,
+            'average': .6,
+            'elevated': .8,
+            'extreme': 1.0
         }
     )
 

@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import TypedDict
 
 import pandas as pd
+import pandas_datareader.data as web
 from dateutil.relativedelta import relativedelta
 
 
@@ -9,11 +10,11 @@ class VolatilityLevels(TypedDict):
     """
     VolatilityLevels defines a dict of volatility levels to categorize volatility
     """
-    minimum: int
-    moderate: int
-    average: int
-    elevated: int
-    extreme: int
+    minimum: float
+    moderate: float
+    average: float
+    elevated: float
+    extreme: float
 
 
 def barometer() -> float:
@@ -21,6 +22,10 @@ def barometer() -> float:
     barometer retrieves various VIX data to calculate the percentile rank of crossovers
     :return: float most recent barometer value
     """
+    # set helpful date values
+    three_years_ago = datetime.now() - relativedelta(years=3)
+    today = datetime.now()
+
     # retrieve VIX9D
     vix9d = pd.read_csv('https://cdn.cboe.com/api/global/us_indices/daily_prices/VIX9D_History.csv')
     vix9d['DATE'] = pd.to_datetime(vix9d['DATE'])
@@ -41,11 +46,18 @@ def barometer() -> float:
     vix['DATE'] = pd.to_datetime(vix['DATE'])
     vix = vix[['DATE', 'CLOSE']].rename(columns={'CLOSE': 'vix'}).set_index('DATE')
 
-    # join all data into a single dataframe
-    df = vix9d.join(vix3m).join(vix6m).join(vix)
+    # retrieve S&P Futures price
+    spy_futs = web.DataReader("ES=F", 'yahoo', three_years_ago, today)
+    spy_futs = spy_futs[['Adj Close']].rename(columns={'Adj Close': 'es_fut'})
 
-    # filter data to only include previous three years
-    three_years_ago = datetime.now() - relativedelta(years=3)
+    # retrieve VVIX
+    vvix = web.DataReader("^VVIX", 'yahoo', three_years_ago, today)
+    vvix = vvix[['Adj Close']].rename(columns={'Adj Close': 'vvix'})
+
+    # join all data into a single dataframe
+    df = vix9d.join(vix3m).join(vix6m).join(vix).join(spy_futs).join(vvix)
+
+    # filter all values by date
     df = df.loc[three_years_ago:]
 
     # perform crossover calculations
@@ -53,13 +65,25 @@ def barometer() -> float:
     df['vix/vix3m'] = df['vix'] / df['vix3m']
     df['vix/vix6m'] = df['vix'] / df['vix6m']
 
+    # perform misc calculations
+    df['vrp'] = (df['vix'] - df['es_fut'].rolling(5).std()).rolling(5).mean()
+
     # calculate percentile ranks
     df['vix9d/vix_rank'] = df['vix9d/vix'].rank(pct=True)
     df['vix/vix3m_rank'] = df['vix/vix3m'].rank(pct=True)
     df['vix/vix6m_rank'] = df['vix/vix6m'].rank(pct=True)
+    # invert vrp rank to align with high pct = high vol
+    df['vrp_rank'] = 1 - df['vrp'].rank(pct=True)
+    df['vvix_rank'] = df['vvix'].rank(pct=True)
 
     # calculate barometer value
-    df['barometer'] = ((df['vix9d/vix_rank'] * 3) + (df['vix/vix3m_rank'] * 2) + (df['vix/vix6m_rank'] * 1)) / 6
+    df['barometer'] = (
+                              df['vix9d/vix_rank'] +
+                              df['vix/vix3m_rank'] +
+                              df['vix/vix6m_rank'] +
+                              df['vrp_rank'] +
+                              df['vvix_rank']
+                      ) / 5
 
     # apply exponential moving average
     df['ewm'] = df['barometer'].ewm(halflife=3).mean()
