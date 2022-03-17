@@ -1,5 +1,28 @@
+import logging
+import sys
+from typing import Any
+
 import structlog
 from structlog.processors import CallsiteParameter
+
+
+def _GCP_severity_processor(log: Any, method_name: str, event_dict: Any) -> Any:
+    event_dict["severity"] = event_dict["level"].upper()
+    del event_dict["level"]
+    return event_dict
+
+
+def _GCP_add_display_message(log: Any, method_name: str, event_dict: Any) -> Any:
+    event_dict["message"] = event_dict["event"]
+    del event_dict["event"]
+    return event_dict
+
+
+logging.basicConfig(
+    format="%(message)s",
+    stream=sys.stdout,
+    level=logging.INFO,
+)
 
 structlog.configure(
     processors=[
@@ -28,6 +51,8 @@ structlog.configure(
              CallsiteParameter.FUNC_NAME,
              CallsiteParameter.LINENO]
         ),
+        _GCP_severity_processor,
+        _GCP_add_display_message,
         # Render the final event dict as JSON.
         structlog.processors.JSONRenderer()
     ],
